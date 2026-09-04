@@ -64,10 +64,111 @@ public:
     constexpr const T *begin() const { return const_cast<Matrix *>(this)->begin(); }
     constexpr const T *end() const { return const_cast<Matrix *>(this)->end(); }
 
-    constexpr bool operator==(const Matrix& other) const
+    constexpr bool operator==(const Matrix &other) const
     {
         return m_rows == other.m_rows && m_cols == other.m_cols && std::equal(begin(), end(), other.begin());
     }
+
+    template<typename U>
+    class RowView
+    {
+    public:
+        constexpr std::size_t size() const { return m_size; }
+
+        constexpr U &operator[](std::size_t i) const
+        {
+            return m_ptr[i];
+        }
+
+        constexpr auto begin() const { return m_ptr; }
+        constexpr auto end() const { return m_ptr + m_size; }
+
+    private:
+        constexpr RowView(U *ptr, std::size_t size)
+            : m_ptr(ptr)
+            , m_size(size)
+        {
+        }
+
+        U *m_ptr;
+        std::size_t m_size;
+
+        friend class Matrix;
+    };
+
+    constexpr auto row(std::size_t i) { return RowView<T>{ m_data + i * m_cols, m_cols }; }
+    constexpr auto row(std::size_t i) const { return RowView<const T>{ m_data + i * m_cols, m_cols }; }
+
+    template<typename U>
+    class ColumnView
+    {
+    public:
+        constexpr std::size_t size() const { return m_size; }
+
+        constexpr U &operator[](std::size_t i) const
+        {
+            return m_ptr[i * m_stride];
+        }
+
+        class Iterator
+        {
+        public:
+            using difference_type = std::ptrdiff_t;
+            using value_type = U;
+
+            constexpr Iterator() = default;
+
+            constexpr Iterator &operator++()
+            {
+                m_ptr += m_stride;
+                return *this;
+            }
+
+            constexpr Iterator operator++(int)
+            {
+                auto tmp = *this;
+                m_ptr += m_stride;
+                return tmp;
+            }
+
+            constexpr value_type &operator*() const { return *m_ptr; }
+
+            constexpr bool operator==(const Iterator &) const = default;
+
+        private:
+            constexpr explicit Iterator(U *ptr, std::ptrdiff_t stride)
+                : m_ptr(ptr)
+                , m_stride(stride)
+            {
+            }
+
+            U *m_ptr{ nullptr };
+            std::ptrdiff_t m_stride;
+
+            friend class Matrix;
+        };
+        static_assert(std::forward_iterator<Iterator>);
+
+        constexpr auto begin() const { return Iterator{ m_ptr, m_stride }; }
+        constexpr auto end() const { return Iterator{ m_ptr + m_size * m_stride, m_stride }; }
+
+    private:
+        constexpr ColumnView(U *ptr, std::size_t size, std::ptrdiff_t stride)
+            : m_ptr(ptr)
+            , m_size(size)
+            , m_stride(stride)
+        {
+        }
+
+        U *m_ptr;
+        std::size_t m_size;
+        std::ptrdiff_t m_stride;
+
+        friend class Matrix;
+    };
+
+    constexpr auto column(std::size_t i) { return ColumnView<T>{ m_data + i, m_rows, static_cast<std::ptrdiff_t>(m_cols) }; }
+    constexpr auto column(std::size_t i) const { return ColumnView<const T>{ m_data + i, m_rows, static_cast<std::ptrdiff_t>(m_cols) }; }
 
 private:
     std::size_t m_rows;
