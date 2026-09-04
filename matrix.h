@@ -85,13 +85,13 @@ public:
 
     private:
         constexpr RowView(U *ptr, std::size_t size)
-            : m_ptr(ptr)
-            , m_size(size)
+            : m_ptr{ ptr }
+            , m_size{ size }
         {
         }
 
-        U *m_ptr;
-        std::size_t m_size;
+        U *m_ptr{ 0 };
+        std::size_t m_size{ 0 };
 
         friend class Matrix;
     };
@@ -143,7 +143,7 @@ public:
             }
 
             U *m_ptr{ nullptr };
-            std::ptrdiff_t m_stride;
+            std::ptrdiff_t m_stride{ 0 };
 
             friend class Matrix;
         };
@@ -154,15 +154,15 @@ public:
 
     private:
         constexpr ColumnView(U *ptr, std::size_t size, std::ptrdiff_t stride)
-            : m_ptr(ptr)
-            , m_size(size)
-            , m_stride(stride)
+            : m_ptr{ ptr }
+            , m_size{ size }
+            , m_stride{ stride }
         {
         }
 
-        U *m_ptr;
-        std::size_t m_size;
-        std::ptrdiff_t m_stride;
+        U *m_ptr{ nullptr };
+        std::size_t m_size{ 0 };
+        std::ptrdiff_t m_stride{ 0 };
 
         friend class Matrix;
     };
