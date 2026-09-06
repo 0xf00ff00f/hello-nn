@@ -6,13 +6,13 @@
 #include "matrix.h"
 
 template<typename T>
-constexpr T sigmoid(T x)
+constexpr auto sigmoid(T x)
 {
     return T{ 1 } / (T{ 1 } + std::exp(-x));
 }
 
 template<typename T>
-constexpr T sigmoidDerivative(T x)
+constexpr auto sigmoidDerivative(T x)
 {
     return x * (T{ 1 } - x);
 }
@@ -87,7 +87,7 @@ public:
         initializeRandom(m_biasO);
     }
 
-    MatrixT feedForward(const Matrixf &input)
+    MatrixT feedForward(const Matrixf &input) const
     {
         MatrixT hidden = applySigmoid(m_weightsIH * input + m_biasH);
         MatrixT output = applySigmoid(m_weightsHO * hidden + m_biasO);
