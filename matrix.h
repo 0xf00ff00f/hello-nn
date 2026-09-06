@@ -316,20 +316,19 @@ constexpr auto operator%(const MatrixExpression<LeftT> &lhs, const MatrixExpress
     return MatrixElementwiseMul{ static_cast<const LeftT &>(lhs), static_cast<const RightT &>(rhs) };
 }
 
-template<typename LeftT, typename RightT>
-    requires std::is_arithmetic_v<RightT>
-class MatrixScalarMul : public MatrixExpression<MatrixScalarMul<LeftT, RightT>>
+template<typename LeftT, typename OpT>
+class MatrixApply : public MatrixExpression<MatrixApply<LeftT, OpT>>
 {
 public:
-    constexpr MatrixScalarMul(const LeftT &lhs, RightT rhs)
+    constexpr MatrixApply(const LeftT &lhs, const OpT &op = { })
         : m_lhs{ lhs }
-        , m_rhs{ rhs }
+        , m_op{ op }
     {
     }
 
     constexpr auto operator[](std::size_t r, std::size_t c) const
     {
-        return m_lhs[r, c] * m_rhs;
+        return m_op(m_lhs[r, c]);
     }
 
     constexpr std::size_t rows() const
@@ -344,21 +343,21 @@ public:
 
 private:
     std::conditional_t<LeftT::IsLeaf, const LeftT &, LeftT> m_lhs;
-    RightT m_rhs;
+    OpT m_op;
 };
 
 template<typename LeftT, typename RightT>
     requires std::is_arithmetic_v<RightT>
 constexpr auto operator*(const MatrixExpression<LeftT> &lhs, RightT rhs)
 {
-    return MatrixScalarMul{ static_cast<const LeftT &>(lhs), rhs };
+    return MatrixApply{ static_cast<const LeftT &>(lhs), [rhs](auto value) { return value * rhs; } };
 }
 
 template<typename LeftT, typename RightT>
     requires std::is_arithmetic_v<LeftT>
 constexpr auto operator*(LeftT lhs, const MatrixExpression<RightT> &rhs)
 {
-    return MatrixScalarMul{ static_cast<const RightT &>(rhs), lhs };
+    return MatrixApply{ static_cast<const RightT &>(rhs), [lhs](auto value) { return lhs * value; } };
 }
 
 template<typename LeftT, typename RightT>
@@ -374,7 +373,7 @@ public:
 
     constexpr auto operator[](std::size_t r, std::size_t c) const
     {
-        using ElementT = std::common_type_t<decltype(m_lhs[0, 0]), decltype(m_rhs[0, 0])>;
+        using ElementT = std::common_type_t<std::decay_t<decltype(m_lhs[0, 0])>, std::decay_t<decltype(m_rhs[0, 0])>>;
         ElementT result{ 0 };
         for (std::size_t i = 0; i < m_lhs.cols(); ++i)
             result += m_lhs[r, i] * m_rhs[i, c];
