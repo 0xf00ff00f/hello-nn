@@ -45,6 +45,7 @@ public:
     constexpr Matrix &operator=(Matrix &&other)
     {
         if (this != &other) {
+            delete[] m_data;
             m_rows = std::exchange(other.m_rows, 0);
             m_cols = std::exchange(other.m_cols, 0);
             m_data = std::exchange(other.m_data, nullptr);
