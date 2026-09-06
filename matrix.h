@@ -1,19 +1,22 @@
 #pragma once
 
 #include <algorithm>
-#include <cstddef>
-#include <cstring>
 #include <utility>
+#include <cassert>
+#include <numeric>
 
 template<typename T>
 struct Matrix {
 public:
     constexpr Matrix(std::size_t rows, std::size_t cols)
-        : m_rows(rows), m_cols(cols), m_data(new T[m_rows * m_cols]) { }
+        : m_rows(rows), m_cols(cols), m_data(new T[m_rows * (m_cols + 1)]) // extra row of padding for column iterator end
+    {
+    }
 
     constexpr Matrix(std::size_t rows, std::size_t cols, std::initializer_list<T> data)
         : Matrix{ rows, cols }
     {
+        assert(data.size() == rows * cols);
         std::ranges::copy(data, begin());
     }
 
@@ -127,7 +130,7 @@ public:
             constexpr Iterator operator++(int)
             {
                 auto tmp = *this;
-                m_ptr += m_stride;
+                ++(*this);
                 return tmp;
             }
 
@@ -170,10 +173,26 @@ public:
     constexpr auto column(std::size_t i) { return ColumnView<T>{ m_data + i, m_rows, static_cast<std::ptrdiff_t>(m_cols) }; }
     constexpr auto column(std::size_t i) const { return ColumnView<const T>{ m_data + i, m_rows, static_cast<std::ptrdiff_t>(m_cols) }; }
 
+    constexpr Matrix operator*(const Matrix &other) const
+    {
+        assert(m_cols == other.m_rows);
+        Matrix result{ m_rows, other.m_cols };
+        for (std::size_t i = 0; i < m_rows; ++i) {
+            for (std::size_t j = 0; j < other.m_cols; ++j) {
+                const auto r = row(i);
+                const auto c = other.column(j);
+                assert(r.size() == c.size());
+                result[i, j] = std::inner_product(r.begin(), r.end(), c.begin(), T{ 0 });
+            }
+        }
+        return result;
+    }
+
 private:
     std::size_t m_rows;
     std::size_t m_cols;
     T *m_data;
 };
 
+using Matrixi = Matrix<int>;
 using Matrixf = Matrix<float>;

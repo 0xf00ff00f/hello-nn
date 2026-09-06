@@ -2,8 +2,6 @@
 
 #include "matrix.h"
 
-#include <cassert>
-
 static_assert([] {
     // initializer list
     Matrixf a{ 3, 2, { 1, 2, 3, 4, 5, 6 } };
@@ -47,6 +45,7 @@ static_assert([] {
     return true;
 }());
 
+// row view
 static_assert([] {
     Matrixf a{ 3, 2, { 1, 2, 3, 4, 5, 6 } };
     assert(a.cols() == 2);
@@ -72,6 +71,7 @@ static_assert([] {
     return true;
 }());
 
+// column view
 static_assert([] {
     Matrixf a{ 3, 2, { 1, 2, 3, 4, 5, 6 } };
     assert(a.rows() == 3);
@@ -88,22 +88,33 @@ static_assert([] {
     assert(c1[1] == 4);
     assert(c1[2] == 6);
 
+    std::ranges::fill(c0, 1);
     return true;
 }());
 
+// column iterator
 static_assert([] {
     Matrixf a{ 3, 2, { 0, 0, 0, 0, 0, 0 } };
 
-    auto c0 = a.column(0);
-    assert(c0.size() == 3);
-    assert(std::distance(c0.begin(), c0.end()) == 3);
-    std::ranges::iota(c0, 1);
+    auto c = a.column(1);
+    assert(c.size() == 3);
+    assert(std::distance(c.begin(), c.end()) == 3);
+    std::ranges::iota(c, 1);
 
-    assert(c0[0] == 1);
-    assert(c0[1] == 2);
-    assert(c0[2] == 3);
+    assert(c[0] == 1);
+    assert(c[1] == 2);
+    assert(c[2] == 3);
 
-    assert((a == Matrixf{ 3, 2, { 1, 0, 2, 0, 3, 0 } }));
+    assert((a == Matrixf{ 3, 2, { 0, 1, 0, 2, 0, 3 } }));
 
+    return true;
+}());
+
+// multiplication
+static_assert([] {
+    Matrixf a{ 3, 2, { 1, 2, 3, 4, 5, 6 } };
+    Matrixf b{ 2, 3, { 7, 8, 9, 10, 11, 12 } };
+    Matrixf c = a * b;
+    assert((c == Matrixf{ 3, 3, { 27, 30, 33, 61, 68, 75, 95, 106, 117 } }));
     return true;
 }());
