@@ -59,10 +59,7 @@ public:
     constexpr std::size_t cols() const { return m_cols; }
 
     constexpr T &operator[](std::size_t i, std::size_t j) { return m_data[i * m_cols + j]; }
-    constexpr const T &operator[](std::size_t i, std::size_t j) const
-    {
-        return const_cast<Matrix *>(this)->m_data[i * m_cols + j];
-    }
+    constexpr const T &operator[](std::size_t i, std::size_t j) const { return m_data[i * m_cols + j]; }
 
     constexpr T *begin() { return m_data; }
     constexpr T *end() { return m_data + m_rows * m_cols; }
