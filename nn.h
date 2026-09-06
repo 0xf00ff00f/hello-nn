@@ -17,25 +17,46 @@ constexpr T sigmoidDerivative(T x)
     return x * (T{ 1 } - x);
 }
 
-template<typename T, typename F>
-Matrix<T> apply(const Matrix<T> &matrix, const F &f)
+template<typename ExprT, typename F>
+class MatrixApply : public MatrixExpression<MatrixApply<ExprT, F>>
 {
-    Matrix result = matrix;
-    for (auto &value : result)
-        value = f(value);
-    return result;
+public:
+    constexpr MatrixApply(const ExprT &expr, const F &fn)
+        : m_expr{ expr }
+        , m_fn{ fn }
+    {
+    }
+
+    constexpr auto operator[](std::size_t r, std::size_t c) const
+    {
+        return m_fn(m_expr[r, c]);
+    }
+
+    constexpr std::size_t rows() const
+    {
+        return m_expr.rows();
+    }
+
+    constexpr std::size_t cols() const
+    {
+        return m_expr.cols();
+    }
+
+private:
+    std::conditional_t<ExprT::IsLeaf, const ExprT &, ExprT> m_expr;
+    const F &m_fn;
+};
+
+template<typename ExprT>
+constexpr auto applySigmoid(const MatrixExpression<ExprT> &expr)
+{
+    return MatrixApply{ static_cast<const ExprT &>(expr), sigmoid<decltype(expr[0, 0])> };
 }
 
-template<typename T>
-Matrix<T> applySigmoid(const Matrix<T> &matrix)
+template<typename ExprT>
+constexpr auto applySigmoidDerivative(const MatrixExpression<ExprT> &expr)
 {
-    return apply(matrix, sigmoid<T>);
-}
-
-template<typename T>
-Matrix<T> applySigmoidDerivative(const Matrix<T> &matrix)
-{
-    return apply(matrix, sigmoidDerivative<T>);
+    return MatrixApply{ static_cast<const ExprT &>(expr), sigmoidDerivative<decltype(expr[0, 0])> };
 }
 
 template<typename T>
@@ -68,8 +89,8 @@ public:
 
     MatrixT feedForward(const Matrixf &input)
     {
-        Matrix hidden = applySigmoid(m_weightsIH * input + m_biasH);
-        Matrix output = applySigmoid(m_weightsHO * hidden + m_biasO);
+        MatrixT hidden = applySigmoid(m_weightsIH * input + m_biasH);
+        MatrixT output = applySigmoid(m_weightsHO * hidden + m_biasO);
         return output;
     }
 
@@ -77,23 +98,20 @@ public:
     {
         // forward pass
 
-        MatrixT hiddenInputs = m_weightsIH * input + m_biasH;
-        MatrixT hiddenOutputs = applySigmoid(hiddenInputs);
-
-        MatrixT outputInputs = m_weightsHO * hiddenOutputs + m_biasO;
-        MatrixT finalOutputs = applySigmoid(outputInputs);
+        MatrixT hiddenOutputs = applySigmoid(m_weightsIH * input + m_biasH);
+        MatrixT finalOutputs = applySigmoid(m_weightsHO * hiddenOutputs + m_biasO);
 
         // backward pass
 
         MatrixT outputErrors = target - finalOutputs;
         MatrixT outputGradients = (applySigmoidDerivative(finalOutputs) % outputErrors) * m_learningRate;
-        MatrixT deltaWeightsHO = outputGradients * hiddenOutputs.transposed();
+        MatrixT deltaWeightsHO = outputGradients * transposed(hiddenOutputs);
         m_weightsHO += deltaWeightsHO;
         m_biasO += outputGradients;
 
-        MatrixT hiddenErrors = m_weightsHO.transposed() * outputErrors;
-        Matrix hiddenGradients = (applySigmoidDerivative(hiddenOutputs) % hiddenErrors) * m_learningRate;
-        Matrix deltaWeightsIH = hiddenGradients * input.transposed();
+        MatrixT hiddenErrors = transposed(m_weightsHO) * outputErrors;
+        MatrixT hiddenGradients = (applySigmoidDerivative(hiddenOutputs) % hiddenErrors) * m_learningRate;
+        MatrixT deltaWeightsIH = hiddenGradients * transposed(input);
         m_weightsIH += deltaWeightsIH;
         m_biasH += hiddenGradients;
     }

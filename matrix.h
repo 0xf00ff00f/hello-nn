@@ -3,11 +3,34 @@
 #include <algorithm>
 #include <utility>
 #include <cassert>
-#include <numeric>
+
+template<typename ExprT>
+class MatrixExpression
+{
+public:
+    static constexpr bool IsLeaf = false;
+
+    constexpr auto operator[](std::size_t r, std::size_t c) const
+    {
+        return static_cast<const ExprT &>(*this)[r, c];
+    }
+
+    constexpr std::size_t rows() const
+    {
+        return static_cast<const ExprT &>(*this).rows();
+    }
+
+    constexpr std::size_t cols() const
+    {
+        return static_cast<const ExprT &>(*this).cols();
+    }
+};
 
 template<typename T>
-struct Matrix {
+struct Matrix : public MatrixExpression<Matrix<T>> {
 public:
+    static constexpr bool IsLeaf = true;
+
     constexpr Matrix(std::size_t rows, std::size_t cols)
         : m_rows(rows), m_cols(cols), m_data(new T[m_rows * (m_cols + 1)]) // extra row of padding for column iterator end
     {
@@ -18,6 +41,17 @@ public:
     {
         assert(data.size() == rows * cols);
         std::ranges::copy(data, begin());
+    }
+
+    template<typename E>
+    constexpr Matrix(const MatrixExpression<E> &expr)
+        : Matrix{ expr.rows(), expr.cols() }
+    {
+        for (std::size_t r = 0; r < m_rows; ++r) {
+            for (std::size_t c = 0; c < m_cols; ++c) {
+                operator[](r, c) = expr[r, c];
+            }
+        }
     }
 
     constexpr ~Matrix() { delete[] m_data; }
@@ -58,8 +92,8 @@ public:
     constexpr std::size_t rows() const { return m_rows; }
     constexpr std::size_t cols() const { return m_cols; }
 
-    constexpr T &operator[](std::size_t i, std::size_t j) { return m_data[i * m_cols + j]; }
-    constexpr const T &operator[](std::size_t i, std::size_t j) const { return m_data[i * m_cols + j]; }
+    constexpr T &operator[](std::size_t r, std::size_t c) { return m_data[r * m_cols + c]; }
+    constexpr const T &operator[](std::size_t r, std::size_t c) const { return m_data[r * m_cols + c]; }
 
     constexpr T *begin() { return m_data; }
     constexpr T *end() { return m_data + m_rows * m_cols; }
@@ -173,97 +207,43 @@ public:
     constexpr auto column(std::size_t i) { return ColumnView<T>{ m_data + i, m_rows, static_cast<std::ptrdiff_t>(m_cols) }; }
     constexpr auto column(std::size_t i) const { return ColumnView<const T>{ m_data + i, m_rows, static_cast<std::ptrdiff_t>(m_cols) }; }
 
-    friend constexpr Matrix operator*(const Matrix &lhs, const Matrix &rhs)
+    template<typename E>
+    constexpr Matrix &operator+=(const MatrixExpression<E> &expr)
     {
-        assert(lhs.m_cols == rhs.m_rows);
-        Matrix result{ lhs.m_rows, rhs.m_cols };
-        for (std::size_t i = 0; i < lhs.m_rows; ++i) {
-            for (std::size_t j = 0; j < rhs.m_cols; ++j) {
-                const auto r = lhs.row(i);
-                const auto c = rhs.column(j);
-                assert(r.size() == c.size());
-                result[i, j] = std::inner_product(r.begin(), r.end(), c.begin(), T{ 0 });
+        assert(expr.rows() == m_rows);
+        assert(expr.cols() == m_cols);
+        for (std::size_t r = 0; r < m_rows; ++r) {
+            for (std::size_t c = 0; c < m_cols; ++c) {
+                operator[](r, c) += expr[r, c];
             }
         }
-        return result;
-    }
-
-    constexpr Matrix &operator*=(const Matrix &other)
-    {
-        *this = *this * other;
         return *this;
     }
 
-    constexpr Matrix &operator*=(T scalar)
+    template<typename E>
+    constexpr Matrix &operator-=(const MatrixExpression<E> &expr)
     {
-        for (auto &value : *this)
-            value *= scalar;
-        return *this;
-    }
-
-    friend constexpr Matrix operator*(const Matrix &lhs, T rhs)
-    {
-        return Matrix(lhs) *= rhs;
-    }
-
-    friend constexpr Matrix operator*(T lhs, const Matrix &rhs)
-    {
-        return Matrix(rhs) *= lhs;
-    }
-
-    constexpr Matrix &operator+=(const Matrix &other)
-    {
-        assert(m_cols == other.m_cols);
-        assert(m_rows == other.m_rows);
-        for (std::size_t i = 0; i < m_rows * m_cols; ++i) {
-            m_data[i] += other.m_data[i];
+        assert(expr.rows() == m_rows);
+        assert(expr.cols() == m_cols);
+        for (std::size_t r = 0; r < m_rows; ++r) {
+            for (std::size_t c = 0; c < m_cols; ++c) {
+                operator[](r, c) -= expr[r, c];
+            }
         }
         return *this;
     }
 
-    friend constexpr Matrix operator+(const Matrix &lhs, const Matrix &rhs)
+    template<typename E>
+    constexpr Matrix &operator%=(const MatrixExpression<E> &expr)
     {
-        return Matrix{ lhs } += rhs;
-    }
-
-    constexpr Matrix &operator-=(const Matrix &other)
-    {
-        assert(m_cols == other.m_cols);
-        assert(m_rows == other.m_rows);
-        for (std::size_t i = 0; i < m_rows * m_cols; ++i) {
-            m_data[i] -= other.m_data[i];
+        assert(expr.rows() == m_rows);
+        assert(expr.cols() == m_cols);
+        for (std::size_t r = 0; r < m_rows; ++r) {
+            for (std::size_t c = 0; c < m_cols; ++c) {
+                operator[](r, c) *= expr[r, c];
+            }
         }
         return *this;
-    }
-
-    friend constexpr Matrix operator-(const Matrix &lhs, const Matrix &rhs)
-    {
-        return Matrix{ lhs } -= rhs;
-    }
-
-    // elementwise multiplication
-    constexpr Matrix &operator%=(const Matrix &other)
-    {
-        assert(m_cols == other.m_cols);
-        assert(m_rows == other.m_rows);
-        for (std::size_t i = 0; i < m_rows * m_cols; ++i) {
-            m_data[i] *= other.m_data[i];
-        }
-        return *this;
-    }
-
-    friend constexpr Matrix operator%(const Matrix &lhs, const Matrix &rhs)
-    {
-        return Matrix{ lhs } %= rhs;
-    }
-
-    constexpr Matrix transposed() const
-    {
-        Matrix result{ m_cols, m_rows };
-        for (std::size_t i = 0; i < m_rows; ++i) {
-            std::ranges::copy(row(i), result.column(i).begin());
-        }
-        return result;
     }
 
 private:
@@ -274,3 +254,184 @@ private:
 
 using Matrixi = Matrix<int>;
 using Matrixf = Matrix<float>;
+
+template<typename LeftT, typename RightT, typename OpT>
+class MatrixBinaryOp : public MatrixExpression<MatrixBinaryOp<LeftT, RightT, OpT>>
+{
+public:
+    constexpr MatrixBinaryOp(const LeftT &lhs, const RightT &rhs, const OpT &op = OpT{ })
+        : m_lhs{ lhs }
+        , m_rhs{ rhs }
+        , m_op{ op }
+    {
+        assert(m_lhs.rows() == m_rhs.rows());
+        assert(m_lhs.cols() == m_rhs.cols());
+    }
+
+    constexpr auto operator[](std::size_t r, std::size_t c) const
+    {
+        return m_op(m_lhs[r, c], m_rhs[r, c]);
+    }
+
+    constexpr std::size_t rows() const
+    {
+        return m_lhs.rows();
+    }
+
+    constexpr std::size_t cols() const
+    {
+        return m_lhs.cols();
+    }
+
+protected:
+    std::conditional_t<LeftT::IsLeaf, const LeftT &, LeftT> m_lhs;
+    std::conditional_t<RightT::IsLeaf, const RightT &, RightT> m_rhs;
+    OpT m_op;
+};
+
+template<typename LeftT, typename RightT>
+using MatrixAdd = MatrixBinaryOp<LeftT, RightT, std::plus<>>;
+
+template<typename LeftT, typename RightT>
+using MatrixSub = MatrixBinaryOp<LeftT, RightT, std::minus<>>;
+
+template<typename LeftT, typename RightT>
+using MatrixElementwiseMul = MatrixBinaryOp<LeftT, RightT, std::multiplies<>>;
+
+template<typename LeftT, typename RightT>
+constexpr auto operator+(const MatrixExpression<LeftT> &lhs, const MatrixExpression<RightT> &rhs)
+{
+    return MatrixAdd{ static_cast<const LeftT &>(lhs), static_cast<const RightT &>(rhs) };
+}
+
+template<typename LeftT, typename RightT>
+constexpr auto operator-(const MatrixExpression<LeftT> &lhs, const MatrixExpression<RightT> &rhs)
+{
+    return MatrixSub{ static_cast<const LeftT &>(lhs), static_cast<const RightT &>(rhs) };
+}
+
+template<typename LeftT, typename RightT>
+constexpr auto operator%(const MatrixExpression<LeftT> &lhs, const MatrixExpression<RightT> &rhs)
+{
+    return MatrixElementwiseMul{ static_cast<const LeftT &>(lhs), static_cast<const RightT &>(rhs) };
+}
+
+template<typename LeftT, typename RightT>
+    requires std::is_arithmetic_v<RightT>
+class MatrixScalarMul : public MatrixExpression<MatrixScalarMul<LeftT, RightT>>
+{
+public:
+    constexpr MatrixScalarMul(const LeftT &lhs, RightT rhs)
+        : m_lhs{ lhs }
+        , m_rhs{ rhs }
+    {
+    }
+
+    constexpr auto operator[](std::size_t r, std::size_t c) const
+    {
+        return m_lhs[r, c] * m_rhs;
+    }
+
+    constexpr std::size_t rows() const
+    {
+        return m_lhs.rows();
+    }
+
+    constexpr std::size_t cols() const
+    {
+        return m_lhs.cols();
+    }
+
+private:
+    std::conditional_t<LeftT::IsLeaf, const LeftT &, LeftT> m_lhs;
+    RightT m_rhs;
+};
+
+template<typename LeftT, typename RightT>
+    requires std::is_arithmetic_v<RightT>
+constexpr auto operator*(const MatrixExpression<LeftT> &lhs, RightT rhs)
+{
+    return MatrixScalarMul{ static_cast<const LeftT &>(lhs), rhs };
+}
+
+template<typename LeftT, typename RightT>
+    requires std::is_arithmetic_v<LeftT>
+constexpr auto operator*(LeftT lhs, const MatrixExpression<RightT> &rhs)
+{
+    return MatrixScalarMul{ static_cast<const RightT &>(rhs), lhs };
+}
+
+template<typename LeftT, typename RightT>
+class MatrixMul : public MatrixExpression<MatrixMul<LeftT, RightT>>
+{
+public:
+    constexpr MatrixMul(const LeftT &lhs, const RightT &rhs)
+        : m_lhs{ lhs }
+        , m_rhs{ rhs }
+    {
+        assert(m_lhs.cols() == m_rhs.rows());
+    }
+
+    constexpr auto operator[](std::size_t r, std::size_t c) const
+    {
+        using ElementT = std::common_type_t<decltype(m_lhs[0, 0]), decltype(m_rhs[0, 0])>;
+        ElementT result{ 0 };
+        for (std::size_t i = 0; i < m_lhs.cols(); ++i)
+            result += m_lhs[r, i] * m_rhs[i, c];
+        return result;
+    }
+
+    constexpr std::size_t rows() const
+    {
+        return m_lhs.rows();
+    }
+
+    constexpr std::size_t cols() const
+    {
+        return m_rhs.cols();
+    }
+
+private:
+    std::conditional_t<LeftT::IsLeaf, const LeftT &, LeftT> m_lhs;
+    std::conditional_t<RightT::IsLeaf, const RightT &, RightT> m_rhs;
+};
+
+template<typename LeftT, typename RightT>
+constexpr auto operator*(const MatrixExpression<LeftT> &lhs, const MatrixExpression<RightT> &rhs)
+{
+    return MatrixMul{ static_cast<const LeftT &>(lhs), static_cast<const RightT &>(rhs) };
+}
+
+template<typename ExprT>
+class MatrixTranspose : public MatrixExpression<MatrixTranspose<ExprT>>
+{
+public:
+    constexpr MatrixTranspose(const ExprT &expr)
+        : m_expr{ expr }
+    {
+    }
+
+    constexpr auto operator[](std::size_t r, std::size_t c) const
+    {
+        return m_expr[c, r];
+    }
+
+    constexpr std::size_t rows() const
+    {
+        return m_expr.cols();
+    }
+
+    constexpr std::size_t cols() const
+    {
+        return m_expr.rows();
+    }
+
+private:
+    std::conditional_t<ExprT::IsLeaf, const ExprT &, ExprT> m_expr;
+};
+
+template<typename ExprT>
+constexpr auto transposed(const MatrixExpression<ExprT> &expr)
+{
+    return MatrixTranspose{ static_cast<const ExprT &>(expr) };
+}
