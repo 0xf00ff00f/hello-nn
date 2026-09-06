@@ -40,7 +40,9 @@ public:
     }
 
     constexpr Matrix(Matrix &&other)
-        : m_rows(std::exchange(other.m_rows, 0)), m_cols(std::exchange(other.m_cols, 0)), m_data(std::exchange(other.m_data, nullptr)) { }
+        : m_rows(std::exchange(other.m_rows, 0)), m_cols(std::exchange(other.m_cols, 0)), m_data(std::exchange(other.m_data, nullptr))
+    {
+    }
 
     constexpr Matrix &operator=(Matrix &&other)
     {
@@ -174,17 +176,95 @@ public:
     constexpr auto column(std::size_t i) { return ColumnView<T>{ m_data + i, m_rows, static_cast<std::ptrdiff_t>(m_cols) }; }
     constexpr auto column(std::size_t i) const { return ColumnView<const T>{ m_data + i, m_rows, static_cast<std::ptrdiff_t>(m_cols) }; }
 
-    constexpr Matrix operator*(const Matrix &other) const
+    friend constexpr Matrix operator*(const Matrix &lhs, const Matrix &rhs)
     {
-        assert(m_cols == other.m_rows);
-        Matrix result{ m_rows, other.m_cols };
-        for (std::size_t i = 0; i < m_rows; ++i) {
-            for (std::size_t j = 0; j < other.m_cols; ++j) {
-                const auto r = row(i);
-                const auto c = other.column(j);
+        assert(lhs.m_cols == rhs.m_rows);
+        Matrix result{ lhs.m_rows, rhs.m_cols };
+        for (std::size_t i = 0; i < lhs.m_rows; ++i) {
+            for (std::size_t j = 0; j < rhs.m_cols; ++j) {
+                const auto r = lhs.row(i);
+                const auto c = rhs.column(j);
                 assert(r.size() == c.size());
                 result[i, j] = std::inner_product(r.begin(), r.end(), c.begin(), T{ 0 });
             }
+        }
+        return result;
+    }
+
+    constexpr Matrix &operator*=(const Matrix &other)
+    {
+        *this = *this * other;
+        return *this;
+    }
+
+    constexpr Matrix &operator*=(T scalar)
+    {
+        for (auto &value : *this)
+            value *= scalar;
+        return *this;
+    }
+
+    friend constexpr Matrix operator*(const Matrix &lhs, T rhs)
+    {
+        return Matrix(lhs) *= rhs;
+    }
+
+    friend constexpr Matrix operator*(T lhs, const Matrix &rhs)
+    {
+        return Matrix(rhs) *= lhs;
+    }
+
+    constexpr Matrix &operator+=(const Matrix &other)
+    {
+        assert(m_cols == other.m_cols);
+        assert(m_rows == other.m_rows);
+        for (std::size_t i = 0; i < m_rows * m_cols; ++i) {
+            m_data[i] += other.m_data[i];
+        }
+        return *this;
+    }
+
+    friend constexpr Matrix operator+(const Matrix &lhs, const Matrix &rhs)
+    {
+        return Matrix{ lhs } += rhs;
+    }
+
+    constexpr Matrix &operator-=(const Matrix &other)
+    {
+        assert(m_cols == other.m_cols);
+        assert(m_rows == other.m_rows);
+        for (std::size_t i = 0; i < m_rows * m_cols; ++i) {
+            m_data[i] -= other.m_data[i];
+        }
+        return *this;
+    }
+
+    friend constexpr Matrix operator-(const Matrix &lhs, const Matrix &rhs)
+    {
+        return Matrix{ lhs } -= rhs;
+    }
+
+    // elementwise multiplication
+    constexpr Matrix &operator%=(const Matrix &other)
+    {
+        assert(m_cols == other.m_cols);
+        assert(m_rows == other.m_rows);
+        for (std::size_t i = 0; i < m_rows * m_cols; ++i) {
+            m_data[i] *= other.m_data[i];
+        }
+        return *this;
+    }
+
+    friend constexpr Matrix operator%(const Matrix &lhs, const Matrix &rhs)
+    {
+        return Matrix{ lhs } %= rhs;
+    }
+
+    constexpr Matrix transposed() const
+    {
+        Matrix result{ m_cols, m_rows };
+        for (std::size_t i = 0; i < m_rows; ++i) {
+            std::ranges::copy(row(i), result.column(i).begin());
         }
         return result;
     }

@@ -1,0 +1,110 @@
+#pragma once
+
+#include <cmath>
+#include <random>
+
+#include "matrix.h"
+
+template<typename T>
+constexpr T sigmoid(T x)
+{
+    return T{ 1 } / (T{ 1 } + std::exp(-x));
+}
+
+template<typename T>
+constexpr T sigmoidDerivative(T x)
+{
+    return x * (T{ 1 } - x);
+}
+
+template<typename T, typename F>
+Matrix<T> apply(const Matrix<T> &matrix, const F &f)
+{
+    Matrix result = matrix;
+    for (auto &value : result)
+        value = f(value);
+    return result;
+}
+
+template<typename T>
+Matrix<T> applySigmoid(const Matrix<T> &matrix)
+{
+    return apply(matrix, sigmoid<T>);
+}
+
+template<typename T>
+Matrix<T> applySigmoidDerivative(const Matrix<T> &matrix)
+{
+    return apply(matrix, sigmoidDerivative<T>);
+}
+
+template<typename T>
+class NeuralNetwork
+{
+public:
+    using MatrixT = Matrix<T>;
+
+    NeuralNetwork(std::size_t input, std::size_t hidden, std::size_t output, T learningRate)
+        : m_input{ input }
+        , m_hidden{ hidden }
+        , m_output{ output }
+        , m_weightsIH{ hidden, input }
+        , m_weightsHO{ output, hidden }
+        , m_biasH{ hidden, 1 }
+        , m_biasO{ output, 1 }
+        , m_learningRate{ learningRate }
+    {
+        auto initializeRandom = [](MatrixT &m) {
+            std::random_device rd;
+            std::mt19937 gen{ rd() };
+            std::uniform_real_distribution<T> dist(T{ -1 }, T{ 1 });
+            std::ranges::generate(m, [&] { return dist(gen); });
+        };
+        initializeRandom(m_weightsIH);
+        initializeRandom(m_weightsHO);
+        initializeRandom(m_biasH);
+        initializeRandom(m_biasO);
+    }
+
+    MatrixT feedForward(const Matrixf &input)
+    {
+        Matrix hidden = applySigmoid(m_weightsIH * input + m_biasH);
+        Matrix output = applySigmoid(m_weightsHO * hidden + m_biasO);
+        return output;
+    }
+
+    void train(const MatrixT &input, const MatrixT &target)
+    {
+        // forward pass
+
+        MatrixT hiddenInputs = m_weightsIH * input + m_biasH;
+        MatrixT hiddenOutputs = applySigmoid(hiddenInputs);
+
+        MatrixT outputInputs = m_weightsHO * hiddenOutputs + m_biasO;
+        MatrixT finalOutputs = applySigmoid(outputInputs);
+
+        // backward pass
+
+        MatrixT outputErrors = target - finalOutputs;
+        MatrixT outputGradients = (applySigmoidDerivative(finalOutputs) % outputErrors) * m_learningRate;
+        MatrixT deltaWeightsHO = outputGradients * hiddenOutputs.transposed();
+        m_weightsHO += deltaWeightsHO;
+        m_biasO += outputGradients;
+
+        MatrixT hiddenErrors = m_weightsHO.transposed() * outputErrors;
+        Matrix hiddenGradients = (applySigmoidDerivative(hiddenOutputs) % hiddenErrors) * m_learningRate;
+        Matrix deltaWeightsIH = hiddenGradients * input.transposed();
+        m_weightsIH += deltaWeightsIH;
+        m_biasH += hiddenGradients;
+    }
+
+private:
+    std::size_t m_input;
+    std::size_t m_hidden;
+    std::size_t m_output;
+    MatrixT m_weightsIH;
+    MatrixT m_weightsHO;
+    MatrixT m_biasH;
+    MatrixT m_biasO;
+    float m_learningRate;
+};

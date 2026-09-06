@@ -113,8 +113,58 @@ static_assert([] {
 // multiplication
 static_assert([] {
     Matrixf a{ 3, 2, { 1, 2, 3, 4, 5, 6 } };
+    assert((a * 2 == Matrixf{ 3, 2, { 2, 4, 6, 8, 10, 12 } }));
+    assert((2 * a == Matrixf{ 3, 2, { 2, 4, 6, 8, 10, 12 } }));
+    a *= 2.0;
+    assert((a == Matrixf{ 3, 2, { 2, 4, 6, 8, 10, 12 } }));
+    return true;
+}());
+
+static_assert([] {
+    Matrixf a{ 3, 2, { 1, 2, 3, 4, 5, 6 } };
     Matrixf b{ 2, 3, { 7, 8, 9, 10, 11, 12 } };
     Matrixf c = a * b;
     assert((c == Matrixf{ 3, 3, { 27, 30, 33, 61, 68, 75, 95, 106, 117 } }));
+    a *= b;
+    assert((a == Matrixf{ 3, 3, { 27, 30, 33, 61, 68, 75, 95, 106, 117 } }));
+    return true;
+}());
+
+static_assert([] {
+    Matrixf a{ 3, 2, { 1, 2, 3, 4, 5, 6 } };
+    Matrixf b{ 3, 2, { 7, 8, 9, 10, 11, 12 } };
+    Matrixf c = a + b;
+    assert((c == Matrixf{ 3, 2, { 8, 10, 12, 14, 16, 18 } }));
+    a += b;
+    assert((a == Matrixf{ 3, 2, { 8, 10, 12, 14, 16, 18 } }));
+    return true;
+}());
+
+static_assert([] {
+    Matrixf a{ 3, 2, { 1, 2, 3, 4, 5, 6 } };
+    Matrixf b{ 3, 2, { 7, 8, 9, 10, 11, 12 } };
+    Matrixf c = a - b;
+    assert((c == Matrixf{ 3, 2, { -6, -6, -6, -6, -6, -6 } }));
+    a -= b;
+    assert((a == Matrixf{ 3, 2, { -6, -6, -6, -6, -6, -6 } }));
+    return true;
+}());
+
+static_assert([] {
+    Matrixf a{ 3, 2, { 1, 2, 3, 4, 5, 6 } };
+    Matrixf b{ 3, 2, { 7, 8, 9, 10, 11, 12 } };
+    Matrixf c = a % b;
+    assert((c == Matrixf{ 3, 2, { 7, 16, 27, 40, 55, 72 } }));
+    a %= b;
+    assert((a == Matrixf{ 3, 2, { 7, 16, 27, 40, 55, 72 } }));
+    return true;
+}());
+
+static_assert([] {
+    Matrixf a{ 3, 2, { 1, 2, 3, 4, 5, 6 } };
+    Matrixf t = a.transposed();
+    assert(t.rows() == 2);
+    assert(t.cols() == 3);
+    assert((t == Matrixf{ 2, 3, { 1, 3, 5, 2, 4, 6 } }));
     return true;
 }());
