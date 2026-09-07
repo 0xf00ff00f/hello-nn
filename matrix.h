@@ -286,7 +286,7 @@ public:
 protected:
     std::conditional_t<LeftT::IsLeaf, const LeftT &, LeftT> m_lhs;
     std::conditional_t<RightT::IsLeaf, const RightT &, RightT> m_rhs;
-    OpT m_op;
+    std::decay_t<OpT> m_op;
 };
 
 template<typename LeftT, typename RightT>
@@ -343,7 +343,7 @@ public:
 
 private:
     std::conditional_t<LeftT::IsLeaf, const LeftT &, LeftT> m_lhs;
-    OpT m_op;
+    std::decay_t<OpT> m_op;
 };
 
 template<typename LeftT, typename RightT>

@@ -5,20 +5,30 @@
 
 #include "matrix.h"
 
+template<typename T>
+constexpr auto sigmoid(T x)
+{
+    return T{ 1 } / (T{ 1 } + std::exp(-x));
+}
+
+template<typename T>
+constexpr auto sigmoidDerivative(T x)
+{
+    return x * (T{ 1 } - x);
+}
+
 template<typename ExprT>
 constexpr auto applySigmoid(const MatrixExpression<ExprT> &expr)
 {
     using T = std::decay_t<decltype(expr[0, 0])>;
-    auto sigmoid = [](T x) { return T{ 1 } / (T{ 1 } + std::exp(-x)); };
-    return MatrixApply{ static_cast<const ExprT &>(expr), sigmoid };
+    return MatrixApply{ static_cast<const ExprT &>(expr), sigmoid<T> };
 }
 
 template<typename ExprT>
 constexpr auto applySigmoidDerivative(const MatrixExpression<ExprT> &expr)
 {
     using T = std::decay_t<decltype(expr[0, 0])>;
-    auto sigmoidDerivative = [](T x) { return x * (T{ 1 } - x); };
-    return MatrixApply{ static_cast<const ExprT &>(expr), sigmoidDerivative };
+    return MatrixApply{ static_cast<const ExprT &>(expr), sigmoidDerivative<T> };
 }
 
 template<typename T>
@@ -86,5 +96,5 @@ private:
     MatrixT m_weightsHO;
     MatrixT m_biasH;
     MatrixT m_biasO;
-    float m_learningRate;
+    T m_learningRate;
 };
