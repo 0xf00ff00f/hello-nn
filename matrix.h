@@ -47,9 +47,9 @@ public:
     constexpr Matrix(const MatrixExpression<E> &expr)
         : Matrix{ expr.rows(), expr.cols() }
     {
-        for (std::size_t r = 0; r < m_rows; ++r) {
-            for (std::size_t c = 0; c < m_cols; ++c) {
-                operator[](r, c) = expr[r, c];
+        for (std::size_t row = 0; row < m_rows; ++row) {
+            for (std::size_t col = 0; col < m_cols; ++col) {
+                operator[](row, col) = expr[row, col];
             }
         }
     }
@@ -212,9 +212,9 @@ public:
     {
         assert(expr.rows() == m_rows);
         assert(expr.cols() == m_cols);
-        for (std::size_t r = 0; r < m_rows; ++r) {
-            for (std::size_t c = 0; c < m_cols; ++c) {
-                operator[](r, c) += expr[r, c];
+        for (std::size_t row = 0; row < m_rows; ++row) {
+            for (std::size_t col = 0; col < m_cols; ++col) {
+                operator[](row, col) += expr[row, col];
             }
         }
         return *this;
@@ -225,9 +225,9 @@ public:
     {
         assert(expr.rows() == m_rows);
         assert(expr.cols() == m_cols);
-        for (std::size_t r = 0; r < m_rows; ++r) {
-            for (std::size_t c = 0; c < m_cols; ++c) {
-                operator[](r, c) -= expr[r, c];
+        for (std::size_t row = 0; row < m_rows; ++row) {
+            for (std::size_t col = 0; col < m_cols; ++col) {
+                operator[](row, col) -= expr[row, col];
             }
         }
         return *this;
@@ -238,9 +238,9 @@ public:
     {
         assert(expr.rows() == m_rows);
         assert(expr.cols() == m_cols);
-        for (std::size_t r = 0; r < m_rows; ++r) {
-            for (std::size_t c = 0; c < m_cols; ++c) {
-                operator[](r, c) *= expr[r, c];
+        for (std::size_t row = 0; row < m_rows; ++row) {
+            for (std::size_t col = 0; col < m_cols; ++col) {
+                operator[](row, col) *= expr[row, col];
             }
         }
         return *this;
@@ -375,8 +375,9 @@ public:
     {
         using ElementT = std::common_type_t<std::decay_t<decltype(m_lhs[0, 0])>, std::decay_t<decltype(m_rhs[0, 0])>>;
         ElementT result{ 0 };
-        for (std::size_t i = 0; i < m_lhs.cols(); ++i)
+        for (std::size_t i = 0; i < m_lhs.cols(); ++i) {
             result += m_lhs[r, i] * m_rhs[i, c];
+        }
         return result;
     }
 

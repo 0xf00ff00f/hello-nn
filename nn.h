@@ -20,15 +20,15 @@ constexpr auto sigmoidDerivative(T x)
 template<typename ExprT>
 constexpr auto applySigmoid(const MatrixExpression<ExprT> &expr)
 {
-    using T = std::decay_t<decltype(expr[0, 0])>;
-    return MatrixApply{ static_cast<const ExprT &>(expr), sigmoid<T> };
+    using ElementT = std::decay_t<decltype(expr[0, 0])>;
+    return MatrixApply{ static_cast<const ExprT &>(expr), sigmoid<ElementT> };
 }
 
 template<typename ExprT>
 constexpr auto applySigmoidDerivative(const MatrixExpression<ExprT> &expr)
 {
-    using T = std::decay_t<decltype(expr[0, 0])>;
-    return MatrixApply{ static_cast<const ExprT &>(expr), sigmoidDerivative<T> };
+    using ElementT = std::decay_t<decltype(expr[0, 0])>;
+    return MatrixApply{ static_cast<const ExprT &>(expr), sigmoidDerivative<ElementT> };
 }
 
 template<typename T>

@@ -19,7 +19,7 @@ static_assert([] {
     // equals
     assert((a == Matrixf{ 3, 2, { 1, 2, 3, 4, 5, 6 } }));
 
-    // copy
+    // copy ctor
     Matrixf c = a;
     assert(c.rows() == 3);
     assert(c.cols() == 2);
@@ -31,7 +31,7 @@ static_assert([] {
     assert((c[2, 1] == 6));
     assert(c == a);
 
-    // move
+    // move ctor
     Matrixf b = std::move(a);
     assert(a.rows() == 0);
     assert(a.cols() == 0);
@@ -43,6 +43,31 @@ static_assert([] {
     assert((b[1, 1] == 4));
     assert((b[2, 0] == 5));
     assert((b[2, 1] == 6));
+
+    // move assign
+    a = std::move(b);
+    assert(b.rows() == 0);
+    assert(b.cols() == 0);
+    assert(a.rows() == 3);
+    assert(a.cols() == 2);
+    assert((a[0, 0] == 1));
+    assert((a[0, 1] == 2));
+    assert((a[1, 0] == 3));
+    assert((a[1, 1] == 4));
+    assert((a[2, 0] == 5));
+    assert((a[2, 1] == 6));
+
+    // copy assign
+    c = a;
+    assert(c.rows() == 3);
+    assert(c.cols() == 2);
+    assert((c[0, 0] == 1));
+    assert((c[0, 1] == 2));
+    assert((c[1, 0] == 3));
+    assert((c[1, 1] == 4));
+    assert((c[2, 0] == 5));
+    assert((c[2, 1] == 6));
+    assert(c == a);
 
     return true;
 }());
